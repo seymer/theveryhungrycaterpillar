@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-right: 2px solid #e9ecef;
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+
+        .category {
+            margin-bottom: 20px;
+        }
+
+        .category-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-title:hover {
+            transform: translateX(5px);
+        }
+
+        .category-title::after {
+            content: '▼';
+            font-size: 0.8em;
+            transition: transform 0.3s;
+        }
+
+        .category-title.collapsed::after {
+            transform: rotate(-90deg);
+        }
+
+        .video-list {
+            margin-top: 10px;
+            display: block;
+        }
+
+        .video-list.hidden {
+            display: none;
+        }
+
+        .video-item {
+            padding: 10px 15px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .video-item:hover {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+
+        .video-item.active {
+            background: #667eea;
+            color: white;
+            border-color: #764ba2;
+        }
+
+        .player-area {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-player {
+            width: 100%;
+            max-width: 900px;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+        }
+
+        .video-info {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .video-info h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .video-info p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .no-video {
+            text-align: center;
+            color: #999;
+            font-size: 1.5em;
+            padding: 50px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+                border-right: none;
+                border-bottom: 2px solid #e9ecef;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 教育视频播放器</h1>
+            <p>选择一个视频开始播放</p>
+        </div>
+        <div class="main-content">
+            <div class="sidebar" id="sidebar"></div>
+            <div class="player-area">
+                <div id="playerContent">
+                    <div class="no-video">
+                        👈 请从左侧选择一个视频
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const videoData = {
+            "Phonics Videos": [
+                "Aa_Phonic_video.mp4", "Bb_Phonic_video.mp4", "Cc_Phonic_video.mp4",
+                "Dd_Phonic_video.mp4", "Ee_Phonic_video.mp4", "Gg_Phonic_video.mp4",
+                "Hh_Phonic_video.mp4", "Ii_Phonic_video.mp4", "Mm_Phonic_video.mp4",
+                "Nn_Phonic_video.mp4", "Oo_Phonic_video.mp4", "Pp_Phonic_video.mp4",
+                "Ss_Phonic_video.mp4", "Tt_Phonic_video.mp4", "Uu_Phonic_video.mp4"
+            ],
+            "Art Crafts Episodes": [
+                "ArtCrafts_Ep1_Spider.mp4", "ArtCrafts_Ep2_Fruit.mp4", "ArtCrafts_Ep3_Colour.mp4",
+                "ArtCrafts_Ep4_Cloud.mp4", "ArtCrafts_Ep5_DaysOfTheWeek.mp4", "ArtCrafts_Ep6_Friends.mp4",
+                "ArtCrafts_Ep7_FastNSlow.mp4", "ArtCrafts_Ep8_LoudAndQuiet.mp4", "ArtCrafts_Ep9_UpAndDown.mp4",
+                "ArtCrafts_Ep10_Seahorse.mp4", "ArtCrafts_Ep11_Firefly.mp4", "ArtCrafts_Ep12_Cats.mp4",
+                "ArtCrafts_Ep13_Snow.mp4"
+            ],
+            "Puppet Episodes": [
+                "Puppet_Ep1_Spider.mp4", "Puppet_Ep2_Caterpillar.mp4", "Puppet_Ep3_Crocodile.mp4",
+                "Puppet_Ep4_Rabbit.mp4", "Puppet_Ep5_Pelican.mp4", "Puppet_Ep6_DuckAndDog.mp4",
+                "Puppet_Ep7_PigAndBird.mp4", "Puppet_Ep8_SealAndGorillaAndBee.mp4", "Puppet_Ep9_FrogAndCricket.mp4",
+                "Puppet_Ep10_Cats.mp4", "Puppet_Ep11_Sheep.mp4", "Puppet_Ep12_Seahorse.mp4",
+                "Puppet_Ep13_Firefly.mp4"
+            ],
+            "Storytime Episodes": [
+                "Storytime_Ep1_Spider.mp4", "Storytime_Ep2_HungryCaterpillar.mp4", "Storytime_Ep3_BlueHorse.mp4",
+                "Storytime_Ep4_LittleCloud.mp4", "Storytime_Ep5_TodayIsMonday.mp4", "Storytime_Ep6_Friends.mp4",
+                "Storytime_Ep7_Slowly.mp4", "Storytime_Ep8_Cricket.mp4", "Storytime_Ep9_ClickBeetle.mp4",
+                "Storytime_Ep10_Firefly.mp4", "Storytime_Ep11_Seahorse.mp4", "Storytime_Ep12_Snow.mp4"
+            ],
+            "Songs": [
+                "ABCSong.mp4", "AColorPictureSong.mp4", "DoubleDoubleDance.mp4",
+                "FiveRubberDucks.mp4", "LittleRubberDucks.mp4", "MessageFromEric.mp4",
+                "RoosterOnTheMoon.mp4", "ShapesSong.mp4", "TenLittlePenguins.mp4"
+            ],
+            "Section Videos": [
+                "section_creative_arts.mp4", "section_learn_to_read.mp4", "section_math.mp4",
+                "section_nature_science.mp4", "section_puzzles.mp4"
+            ]
+        };
+
+        let currentVideo = null;
+        let allVideos = [];
+
+        // 初始化视频列表
+        function init() {
+            const sidebar = document.getElementById('sidebar');
+            
+            Object.keys(videoData).forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category';
+                
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.textContent = category;
+                categoryTitle.onclick = () => toggleCategory(categoryTitle);
+                
+                const videoList = document.createElement('div');
+                videoList.className = 'video-list';
+                
+                videoData[category].forEach(video => {
+                    const videoItem = document.createElement('div');
+                    videoItem.className = 'video-item';
+                    videoItem.textContent = video.replace('.mp4', '');
+                    videoItem.onclick = () => playVideo(category, video, videoItem);
+                    videoList.appendChild(videoItem);
+                    
+                    allVideos.push({ category, video, element: videoItem });
+                });
+                
+                categoryDiv.appendChild(categoryTitle);
+                categoryDiv.appendChild(videoList);
+                sidebar.appendChild(categoryDiv);
+            });
+        }
+
+        function toggleCategory(titleElement) {
+            const videoList = titleElement.nextElementSibling;
+            titleElement.classList.toggle('collapsed');
+            videoList.classList.toggle('hidden');
+        }
+
+        function playVideo(category, videoName, element) {
+            // 更新选中状态
+            document.querySelectorAll('.video-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            element.classList.add('active');
+
+            // 构建视频路径 - 根据实际的文件夹名称映射
+            const folderMap = {
+                "Phonics Videos": "Phonics Videos",
+                "Art Crafts Episodes": "Art Crafts Episodes",
+                "Puppet Episodes": "Puppet Episodes",
+                "Storytime Episodes": "Storytime Episodes",
+                "Songs": "Songs",
+                "Section Videos": "Section Videos"
+            };
+            
+            const folderName = folderMap[category] || category;
+            const videoPath = `${folderName}/${videoName}`;
+            
+            currentVideo = { category, videoName, path: videoPath };
+            
+            // 创建播放器
+            const playerContent = document.getElementById('playerContent');
+            playerContent.innerHTML = `
+                <div class="video-player">
+                    <video controls autoplay>
+                        <source src="${videoPath}" type="video/mp4">
+                        您的浏览器不支持视频播放。
+                    </video>
+                </div>
+                <div class="video-info">
+                    <h2>${videoName.replace('.mp4', '')}</h2>
+                    <p>分类: ${category}</p>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="playPrevious()">⏮ 上一个</button>
+                    <button class="btn btn-secondary" onclick="playNext()">下一个 ⏭</button>
+                </div>
+            `;
+
+            // 视频结束后自动播放下一个
+            const video = playerContent.querySelector('video');
+            video.onended = () => playNext();
+        }
+
+        function findCurrentIndex() {
+            return allVideos.findIndex(v => 
+                v.category === currentVideo.category && 
+                v.video === currentVideo.videoName
+            );
+        }
+
+        function playNext() {
+            if (!currentVideo) return;
+            const currentIndex = findCurrentIndex();
+            const nextIndex = (currentIndex + 1) % allVideos.length;
+            const next = allVideos[nextIndex];
+            playVideo(next.category, next.video, next.element);
+        }
+
+        function playPrevious() {
+            if (!currentVideo) return;
+            const currentIndex = findCurrentIndex();
+            const prevIndex = (currentIndex - 1 + allVideos.length) % allVideos.length;
+            const prev = allVideos[prevIndex];
+            playVideo(prev.category, prev.video, prev.element);
+        }
+
+        init();
+    </script>
+</body>
+</html>
